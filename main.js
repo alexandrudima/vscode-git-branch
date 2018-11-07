@@ -8,9 +8,9 @@ const path = require('path');
 const vscode = require('vscode');
 
 var gitAPI = null;
-exports.activate = function () {
+exports.activate = function (ctx) {
 	gitAPI = vscode.extensions.getExtension('vscode.git').exports.getAPI(1);
-	vscode.window.registerTreeDataProvider('git-branch', new TreeDataProvider());
+	vscode.window.registerTreeDataProvider('git-branch', new TreeDataProvider(ctx));
 }
 
 function getDiff() {
@@ -36,7 +36,9 @@ function getDiff() {
 	});
 }
 
-function TreeDataProvider() {
+function TreeDataProvider(ctx) {
+
+	this.ctx = ctx;
 
 	const repository = gitAPI.repositories[0];
 
@@ -44,18 +46,25 @@ function TreeDataProvider() {
 
 		console.log(diff.substr(0, 10000));
 
-		let files = [];
+		let entries = [];
 		const lines = diff.split(/\r\n|\r|\n/);
 		for (let i = 0; i < lines.length; i++) {
 			let m = lines[i].match(/diff --git a\/([^ ]+)/);
 			if (m) {
-				files.push(m[1]);
+				let kind = 'modified';
+				if (i + 1 < lines.length) {
+					if (/^new file/.test(lines[i + 1])) {
+						kind = 'added';
+					}
+				}
+				entries.push({
+					uri: vscode.Uri.file(path.join(repository.rootUri.fsPath, m[1])),
+					relativePath: m[1],
+					kind: kind
+				});
 			}
 		}
-		return files.map(file => ({
-			uri: vscode.Uri.file(path.join(repository.rootUri.fsPath, file)),
-			relativePath: file
-		}));
+		return entries;
 	});
 }
 
@@ -75,6 +84,10 @@ TreeDataProvider.prototype.getTreeItem = function (element) {
 	return {
 		label: element.relativePath,
 		resourceUri: element.uri,
+		iconPath: {
+			light: this.ctx.asAbsolutePath(`resources/icons/light/status-${element.kind}.svg`),
+			dark: this.ctx.asAbsolutePath(`resources/icons/dark/status-${element.kind}.svg`),
+		},
 		command: {
 			command: 'vscode.diff',
 			arguments: [left, right, `${path.basename(element.relativePath)} (BRANCH)`]
