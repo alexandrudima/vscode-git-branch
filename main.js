@@ -38,19 +38,50 @@ function getDiff() {
 
 function TreeDataProvider(ctx) {
 
+	function createPrefixMatch(prefix) {
+		return function(str) {
+			return str.substr(0, prefix.length) === prefix;
+		}
+	}
+
+	function createExactMatch(staticstr) {
+		return function(str) {
+			return str === staticstr;
+		}
+	}
+
 	this.ctx = ctx;
 
 	const repository = gitAPI.repositories[0];
 
 	this.files = getDiff().then((diff) => {
 
-		console.log(diff.substr(0, 10000));
+		let excludes = (vscode.workspace.getConfiguration('gitBranch').diffExcludes || []).map(function(exclude) {
+			if (/\*\*$/.test(exclude)) {
+				return createPrefixMatch(exclude.substr(0, exclude.length - 2));
+			}
+			return createExactMatch(exclude);
+		});
+
+		// console.log(diff.substr(0, 10000));
 
 		let entries = [];
 		const lines = diff.split(/\r\n|\r|\n/);
 		for (let i = 0; i < lines.length; i++) {
 			let m = lines[i].match(/diff --git a\/([^ ]+)/);
 			if (m) {
+				let relativePath = m[1];
+				let exclude = false;
+				for (let j = 0; j < excludes.length; j++) {
+					if (excludes[j](relativePath)) {
+						exclude = true;
+						break;
+					}
+				}
+				if (exclude) {
+					continue;
+				}
+
 				let kind = 'modified';
 				if (i + 1 < lines.length) {
 					if (/^new file/.test(lines[i + 1])) {
@@ -58,8 +89,8 @@ function TreeDataProvider(ctx) {
 					}
 				}
 				entries.push({
-					uri: vscode.Uri.file(path.join(repository.rootUri.fsPath, m[1])),
-					relativePath: m[1],
+					uri: vscode.Uri.file(path.join(repository.rootUri.fsPath, relativePath)),
+					relativePath: relativePath,
 					kind: kind
 				});
 			}
