@@ -1,0 +1,41 @@
+{
+    "name": "git-branch",
+    "description": "description",
+    "publisher": "alexdima",
+    "version": "1.0.0",
+    "activationEvents": [
+        "onView:git-branch"
+    ],
+    "main": "main.js",
+    "engines": {
+        "vscode": "^1.29.0"
+    },
+    "extensionDependencies": [
+        "vscode.git"
+    ],
+    "contributes": {
+        "views": {
+            "scm": [
+                {
+                    "id": "git-branch",
+                    "name": "Git Branch",
+                    "when": "config.git.enabled"
+                }
+            ]
+        },
+        "configuration": {
+            "type": "object",
+            "title": "Git Branch",
+            "properties": {
+                "gitBranch.diffExcludes": {
+                    "type": "array",
+                    "default": [],
+                    "description": "List of excludes",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}
