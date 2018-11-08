@@ -75,18 +75,19 @@ function TreeDataProvider(ctx) {
 	this.files = getDiff().then((diff) => {
 		
 		const myConfig = vscode.workspace.getConfiguration('gitBranch');
-		let exclude = createMatcher(myConfig.diffExcludes || []);
+		const exclude = createMatcher(myConfig.diffExcludes || []);
 
-		let diffGroups = (myConfig.diffGroups || []).map((element) => {
+		const diffGroups = (myConfig.diffGroups || []).map((element) => {
 			return {
 				name: element.name,
-				test: createMatcher(element.files)
+				test: createMatcher(element.files),
+				entries: []
 			}
 		});
+		diffGroups.unshift({ name: 'Default', test: () => true, entries: [] });
 
-		// console.log(diff.substr(0, 10000));
+		// let entries = [];
 
-		let entries = [];
 		const lines = diff.split(/\r\n|\r|\n/);
 		for (let i = 0; i < lines.length; i++) {
 			let m = lines[i].match(/diff --git a\/([^ ]+)/);
@@ -103,19 +104,41 @@ function TreeDataProvider(ctx) {
 						kind = 'added';
 					}
 				}
-				entries.push({
+
+				let entry = {
 					uri: vscode.Uri.file(path.join(repository.rootUri.fsPath, relativePath)),
 					relativePath: relativePath,
 					kind: kind
-				});
+				};
+
+				// Find group
+				let hasGroup = false;
+				for (let j = diffGroups.length - 1; j >= 1; j--) {
+					if (diffGroups[j].test(relativePath)) {
+						diffGroups[j].entries.push(entry);
+						hasGroup = true;
+					}
+				}
+				if (!hasGroup) {
+					// Add it to the default group
+					diffGroups[0].entries.push(entry);
+				}
 			}
 		}
-		return entries;
+		return diffGroups;
 	});
 }
 
 TreeDataProvider.prototype.getTreeItem = function (element) {
 	
+	if (element.name) {
+		// this is a group
+		return {
+			label: element.name,
+			collapsibleState: element.name === 'Default' ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed
+		};
+	}
+
 	let left = element.uri.with({
 		scheme: 'git',
 		path: element.relativePath,
@@ -142,5 +165,8 @@ TreeDataProvider.prototype.getTreeItem = function (element) {
 };
 
 TreeDataProvider.prototype.getChildren = function (element) {
-	return this.files;
+	if (!element) {
+		return this.files;
+	}
+	return element.entries;
 };
