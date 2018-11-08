@@ -4,7 +4,8 @@
     "publisher": "alexdima",
     "version": "1.0.0",
     "activationEvents": [
-        "onView:git-branch"
+        "onView:git-branch.view",
+        "onCommand:git-branch.refresh"
     ],
     "main": "main.js",
     "engines": {
@@ -17,9 +18,26 @@
         "views": {
             "scm": [
                 {
-                    "id": "git-branch",
+                    "id": "git-branch.view",
                     "name": "Git Branch",
                     "when": "config.git.enabled"
+                }
+            ]
+        },
+        "commands": {
+            "command": "git-branch.refresh",
+            "title": "Refresh Git Branch",
+            "icon": {
+                "dark": "./resources/icons/dark/action-refresh.svg",
+                "light": "./resources/icons/light/action-refresh.svg"
+            }
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "git-branch.refresh",
+                    "group": "navigation",
+                    "when": "view == git-branch.view"
                 }
             ]
         },

@@ -10,7 +10,11 @@ const vscode = require('vscode');
 var gitAPI = null;
 exports.activate = function (ctx) {
 	gitAPI = vscode.extensions.getExtension('vscode.git').exports.getAPI(1);
-	vscode.window.registerTreeDataProvider('git-branch', new TreeDataProvider(ctx));
+	let treeDataProvider = new TreeDataProvider(ctx);
+	vscode.window.registerTreeDataProvider('git-branch.view', treeDataProvider);
+	vscode.commands.registerCommand('git-branch.refresh', function() {
+		treeDataProvider.refresh();
+	})
 }
 
 function getDiff() {
@@ -37,43 +41,16 @@ function getDiff() {
 }
 
 function TreeDataProvider(ctx) {
-
-	function createPrefixMatch(prefix) {
-		return function(teststr) {
-			return teststr.substr(0, prefix.length) === prefix;
-		}
-	}
-
-	function createExactMatch(str) {
-		return function(teststr) {
-			return teststr === str;
-		}
-	}
-
-	function createMatcher(arr) {
-		const matchers = arr.map(function(entry) {
-			if (/\*\*$/.test(entry)) {
-				return createPrefixMatch(entry.substr(0, entry.length - 2));
-			}
-			return createExactMatch(entry);
-		});
-
-		return function(teststr) {
-			for (let i = 0; i < matchers.length; i++) {
-				if (matchers[i](teststr)) {
-					return true;
-				}
-			}
-			return false;
-		}
-	}
-
 	this.ctx = ctx;
+	this._onDidChangeTreeData = new vscode.EventEmitter();
+	this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+	this.refresh();
+}
 
+TreeDataProvider.prototype.refresh = function () {
 	const repository = gitAPI.repositories[0];
-
 	this.files = getDiff().then((diff) => {
-		
+
 		const myConfig = vscode.workspace.getConfiguration('gitBranch');
 		const exclude = createMatcher(myConfig.diffExcludes || []);
 
@@ -127,10 +104,41 @@ function TreeDataProvider(ctx) {
 		}
 		return diffGroups;
 	});
+	this._onDidChangeTreeData.fire();
+
+	function createPrefixMatch(prefix) {
+		return function (teststr) {
+			return teststr.substr(0, prefix.length) === prefix;
+		}
+	}
+
+	function createExactMatch(str) {
+		return function (teststr) {
+			return teststr === str;
+		}
+	}
+
+	function createMatcher(arr) {
+		const matchers = arr.map(function (entry) {
+			if (/\*\*$/.test(entry)) {
+				return createPrefixMatch(entry.substr(0, entry.length - 2));
+			}
+			return createExactMatch(entry);
+		});
+
+		return function (teststr) {
+			for (let i = 0; i < matchers.length; i++) {
+				if (matchers[i](teststr)) {
+					return true;
+				}
+			}
+			return false;
+		}
+	}
 }
 
 TreeDataProvider.prototype.getTreeItem = function (element) {
-	
+
 	if (element.name) {
 		// this is a group
 		return {
