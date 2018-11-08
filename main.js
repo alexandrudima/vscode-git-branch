@@ -39,14 +39,32 @@ function getDiff() {
 function TreeDataProvider(ctx) {
 
 	function createPrefixMatch(prefix) {
-		return function(str) {
-			return str.substr(0, prefix.length) === prefix;
+		return function(teststr) {
+			return teststr.substr(0, prefix.length) === prefix;
 		}
 	}
 
-	function createExactMatch(staticstr) {
-		return function(str) {
-			return str === staticstr;
+	function createExactMatch(str) {
+		return function(teststr) {
+			return teststr === str;
+		}
+	}
+
+	function createMatcher(arr) {
+		const matchers = arr.map(function(entry) {
+			if (/\*\*$/.test(entry)) {
+				return createPrefixMatch(entry.substr(0, entry.length - 2));
+			}
+			return createExactMatch(entry);
+		});
+
+		return function(teststr) {
+			for (let i = 0; i < matchers.length; i++) {
+				if (matchers[i](teststr)) {
+					return true;
+				}
+			}
+			return false;
 		}
 	}
 
@@ -55,12 +73,15 @@ function TreeDataProvider(ctx) {
 	const repository = gitAPI.repositories[0];
 
 	this.files = getDiff().then((diff) => {
+		
+		const myConfig = vscode.workspace.getConfiguration('gitBranch');
+		let exclude = createMatcher(myConfig.diffExcludes || []);
 
-		let excludes = (vscode.workspace.getConfiguration('gitBranch').diffExcludes || []).map(function(exclude) {
-			if (/\*\*$/.test(exclude)) {
-				return createPrefixMatch(exclude.substr(0, exclude.length - 2));
+		let diffGroups = (myConfig.diffGroups || []).map((element) => {
+			return {
+				name: element.name,
+				test: createMatcher(element.files)
 			}
-			return createExactMatch(exclude);
 		});
 
 		// console.log(diff.substr(0, 10000));
@@ -71,14 +92,8 @@ function TreeDataProvider(ctx) {
 			let m = lines[i].match(/diff --git a\/([^ ]+)/);
 			if (m) {
 				let relativePath = m[1];
-				let exclude = false;
-				for (let j = 0; j < excludes.length; j++) {
-					if (excludes[j](relativePath)) {
-						exclude = true;
-						break;
-					}
-				}
-				if (exclude) {
+
+				if (exclude(relativePath)) {
 					continue;
 				}
 

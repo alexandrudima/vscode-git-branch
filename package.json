@@ -34,6 +34,25 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "gitBranch.diffGroups": {
+                    "type": "array",
+                    "default": [],
+                    "description": "List of excludes",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "files": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
