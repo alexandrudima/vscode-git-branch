@@ -103,7 +103,7 @@ TreeDataProvider.prototype.getTreeItem = function (element) {
 	
 	let left = element.uri.with({
 		scheme: 'git',
-		path: `${element.relativePath}.git`,
+		path: element.relativePath,
 		query: JSON.stringify({
 			path: element.uri.fsPath,
 			ref: 'master'
