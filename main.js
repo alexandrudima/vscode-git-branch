@@ -17,11 +17,11 @@ exports.activate = function (ctx) {
 	})
 }
 
-function getDiff() {
+function getDiff(baseBranch) {
 	const repository = gitAPI.repositories[0];
 	return new Promise((c, e) => {
 		cp.exec(
-			`${gitAPI.git.path} diff master HEAD`,
+			`${gitAPI.git.path} diff ${baseBranch} HEAD`,
 			{
 				cwd: repository.rootUri.fsPath,
 				maxBuffer: 10 * 1024 * 1024 // 10MB
@@ -48,10 +48,11 @@ function TreeDataProvider(ctx) {
 }
 
 TreeDataProvider.prototype.refresh = function () {
+	const myConfig = vscode.workspace.getConfiguration('gitBranch');
+	const baseBranch = myConfig.base || 'master';
 	const repository = gitAPI.repositories[0];
-	this.files = getDiff().then((diff) => {
+	this.files = getDiff(baseBranch).then((diff) => {
 
-		const myConfig = vscode.workspace.getConfiguration('gitBranch');
 		const exclude = createMatcher(myConfig.diffExcludes || []);
 
 		const diffGroups = (myConfig.diffGroups || []).map((element) => {
@@ -85,8 +86,16 @@ TreeDataProvider.prototype.refresh = function () {
 				let entry = {
 					uri: vscode.Uri.file(path.join(repository.rootUri.fsPath, relativePath)),
 					relativePath: relativePath,
-					kind: kind
+					kind: kind,
 				};
+				entry.original = entry.uri.with({
+					scheme: 'git',
+					path: relativePath,
+					query: JSON.stringify({
+						path: entry.uri.fsPath,
+						ref: baseBranch
+					})
+				});
 
 				// Find group
 				let hasGroup = false;
@@ -147,15 +156,7 @@ TreeDataProvider.prototype.getTreeItem = function (element) {
 		};
 	}
 
-	let left = element.uri.with({
-		scheme: 'git',
-		path: element.relativePath,
-		query: JSON.stringify({
-			path: element.uri.fsPath,
-			ref: 'master'
-		})
-	});
-
+	let left = element.original;
 	let right = element.uri;
 
 	return {

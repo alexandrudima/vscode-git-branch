@@ -45,6 +45,11 @@
             "type": "object",
             "title": "Git Branch",
             "properties": {
+                "gitBranch.base": {
+                    "type": "string",
+                    "default": "master",
+                    "description": "Base branch"
+                },
                 "gitBranch.diffExcludes": {
                     "type": "array",
                     "default": [],
