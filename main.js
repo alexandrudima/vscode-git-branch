@@ -12,7 +12,7 @@ exports.activate = function (ctx) {
 	gitAPI = vscode.extensions.getExtension('vscode.git').exports.getAPI(1);
 	let treeDataProvider = new TreeDataProvider(ctx);
 	vscode.window.registerTreeDataProvider('git-branch.view', treeDataProvider);
-	vscode.commands.registerCommand('git-branch.refresh', function() {
+	vscode.commands.registerCommand('git-branch.refresh', function () {
 		treeDataProvider.refresh();
 	})
 }
@@ -40,6 +40,37 @@ function getDiff(baseBranch) {
 	});
 }
 
+function getMergeBase() {
+	const myConfig = vscode.workspace.getConfiguration('gitBranch');
+	if (myConfig.mergeBase) {
+		return Promise.resolve(myConfig.mergeBase);
+	}
+
+	const masterBranch = myConfig.base || 'master';
+
+	// git merge-base HEAD master
+	const repository = gitAPI.repositories[0];
+	return new Promise((c, e) => {
+		cp.exec(
+			`${gitAPI.git.path} merge-base HEAD ${masterBranch}`,
+			{
+				cwd: repository.rootUri.fsPath,
+				maxBuffer: 10 * 1024 * 1024 // 10MB
+			},
+			function (err, res, stderr) {
+				if (err) {
+					console.log(err);
+					console.log(stderr);
+					e(err);
+					return;
+				}
+
+				c(res.trim());
+			}
+		);
+	});
+}
+
 function TreeDataProvider(ctx) {
 	this.ctx = ctx;
 	this._onDidChangeTreeData = new vscode.EventEmitter();
@@ -49,69 +80,70 @@ function TreeDataProvider(ctx) {
 
 TreeDataProvider.prototype.refresh = function () {
 	const myConfig = vscode.workspace.getConfiguration('gitBranch');
-	const baseBranch = myConfig.base || 'master';
 	const repository = gitAPI.repositories[0];
-	this.files = getDiff(baseBranch).then((diff) => {
+	this.files = getMergeBase().then((baseBranch) => {
+		return getDiff(baseBranch).then((diff) => {
 
-		const exclude = createMatcher(myConfig.diffExcludes || []);
+			const exclude = createMatcher(myConfig.diffExcludes || []);
 
-		const diffGroups = (myConfig.diffGroups || []).map((element) => {
-			return {
-				name: element.name,
-				test: createMatcher(element.files),
-				entries: []
+			const diffGroups = (myConfig.diffGroups || []).map((element) => {
+				return {
+					name: element.name,
+					test: createMatcher(element.files),
+					entries: []
+				}
+			});
+			diffGroups.unshift({ name: 'Default', test: () => true, entries: [] });
+
+			// let entries = [];
+
+			const lines = diff.split(/\r\n|\r|\n/);
+			for (let i = 0; i < lines.length; i++) {
+				let m = lines[i].match(/diff --git a\/([^ ]+)/);
+				if (m) {
+					let relativePath = m[1];
+
+					if (exclude(relativePath)) {
+						continue;
+					}
+
+					let kind = 'modified';
+					if (i + 1 < lines.length) {
+						if (/^new file/.test(lines[i + 1])) {
+							kind = 'added';
+						}
+					}
+
+					let entry = {
+						uri: vscode.Uri.file(path.join(repository.rootUri.fsPath, relativePath)),
+						relativePath: relativePath,
+						kind: kind,
+					};
+					entry.original = entry.uri.with({
+						scheme: 'git',
+						path: relativePath,
+						query: JSON.stringify({
+							path: entry.uri.fsPath,
+							ref: baseBranch
+						})
+					});
+
+					// Find group
+					let hasGroup = false;
+					for (let j = diffGroups.length - 1; j >= 1; j--) {
+						if (diffGroups[j].test(relativePath)) {
+							diffGroups[j].entries.push(entry);
+							hasGroup = true;
+						}
+					}
+					if (!hasGroup) {
+						// Add it to the default group
+						diffGroups[0].entries.push(entry);
+					}
+				}
 			}
+			return diffGroups;
 		});
-		diffGroups.unshift({ name: 'Default', test: () => true, entries: [] });
-
-		// let entries = [];
-
-		const lines = diff.split(/\r\n|\r|\n/);
-		for (let i = 0; i < lines.length; i++) {
-			let m = lines[i].match(/diff --git a\/([^ ]+)/);
-			if (m) {
-				let relativePath = m[1];
-
-				if (exclude(relativePath)) {
-					continue;
-				}
-
-				let kind = 'modified';
-				if (i + 1 < lines.length) {
-					if (/^new file/.test(lines[i + 1])) {
-						kind = 'added';
-					}
-				}
-
-				let entry = {
-					uri: vscode.Uri.file(path.join(repository.rootUri.fsPath, relativePath)),
-					relativePath: relativePath,
-					kind: kind,
-				};
-				entry.original = entry.uri.with({
-					scheme: 'git',
-					path: relativePath,
-					query: JSON.stringify({
-						path: entry.uri.fsPath,
-						ref: baseBranch
-					})
-				});
-
-				// Find group
-				let hasGroup = false;
-				for (let j = diffGroups.length - 1; j >= 1; j--) {
-					if (diffGroups[j].test(relativePath)) {
-						diffGroups[j].entries.push(entry);
-						hasGroup = true;
-					}
-				}
-				if (!hasGroup) {
-					// Add it to the default group
-					diffGroups[0].entries.push(entry);
-				}
-			}
-		}
-		return diffGroups;
 	});
 	this._onDidChangeTreeData.fire();
 

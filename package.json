@@ -45,6 +45,11 @@
             "type": "object",
             "title": "Git Branch",
             "properties": {
+                "gitBranch.mergeBase": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Merge Base branch"
+                },
                 "gitBranch.base": {
                     "type": "string",
                     "default": "master",
