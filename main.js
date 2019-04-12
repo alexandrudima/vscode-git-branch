@@ -21,7 +21,7 @@ function getDiff(baseBranch) {
 	const repository = gitAPI.repositories[0];
 	return new Promise((c, e) => {
 		cp.exec(
-			`${gitAPI.git.path} diff ${baseBranch} HEAD`,
+			`${gitAPI.git.path} diff ${baseBranch} HEAD --name-status`,
 			{
 				cwd: repository.rootUri.fsPath,
 				maxBuffer: 10 * 1024 * 1024 // 10MB
@@ -99,19 +99,17 @@ TreeDataProvider.prototype.refresh = function () {
 
 			const lines = diff.split(/\r\n|\r|\n/);
 			for (let i = 0; i < lines.length; i++) {
-				let m = lines[i].match(/diff --git a\/([^ ]+)/);
+				let m = lines[i].match(/([\w])\s*(.*)$/);
 				if (m) {
-					let relativePath = m[1];
+					let relativePath = m[2];
 
 					if (exclude(relativePath)) {
 						continue;
 					}
 
 					let kind = 'modified';
-					if (i + 1 < lines.length) {
-						if (/^new file/.test(lines[i + 1])) {
-							kind = 'added';
-						}
+					if (m[1] === 'A') {
+						kind = 'added';
 					}
 
 					let entry = {
