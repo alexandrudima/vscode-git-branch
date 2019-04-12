@@ -2,7 +2,7 @@
     "name": "git-branch",
     "description": "description",
     "publisher": "alexdima",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "activationEvents": [
         "onView:git-branch.view",
         "onCommand:git-branch.refresh"
