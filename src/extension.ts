@@ -16,8 +16,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 	})
 }
 
-function getDiff(baseBranch: string): Promise<string> {
-	const repository = gitAPI.repositories[0];
+function getDiff(repository: vscodeGit.Repository, baseBranch: string): Promise<string> {
 	return new Promise((c, e) => {
 		cp.exec(
 			`${gitAPI.git.path} diff ${baseBranch} HEAD --name-status`,
@@ -39,7 +38,7 @@ function getDiff(baseBranch: string): Promise<string> {
 	});
 }
 
-function getMergeBase(): Promise<string> {
+function getMergeBase(repository: vscodeGit.Repository): Promise<string> {
 	const myConfig = vscode.workspace.getConfiguration('gitBranch');
 	if (myConfig.mergeBase) {
 		return Promise.resolve(myConfig.mergeBase);
@@ -48,7 +47,6 @@ function getMergeBase(): Promise<string> {
 	const masterBranch = myConfig.base || 'master';
 
 	// git merge-base HEAD master
-	const repository = gitAPI.repositories[0];
 	return new Promise((c, e) => {
 		cp.exec(
 			`${gitAPI.git.path} merge-base HEAD ${masterBranch}`,
@@ -105,13 +103,20 @@ class TreeDataProvider implements vscode.TreeDataProvider<DiffGroup | DiffGroupE
 	constructor(ctx: vscode.ExtensionContext) {
 		this.ctx = ctx;
 		this.refresh();
+		gitAPI.onDidOpenRepository((e) => this.refresh());
 	}
 
 	public refresh(): void {
-		const myConfig = <IMyConfig><any>vscode.workspace.getConfiguration('gitBranch');
+		if (gitAPI.repositories.length === 0) {
+			this.files = Promise.resolve([]);
+			this._onDidChangeTreeData.fire();
+			return;
+		}
+
 		const repository = gitAPI.repositories[0];
-		this.files = getMergeBase().then((baseBranch) => {
-			return getDiff(baseBranch).then((diff) => {
+		const myConfig = <IMyConfig><any>vscode.workspace.getConfiguration('gitBranch');
+		this.files = getMergeBase(repository).then((baseBranch) => {
+			return getDiff(repository, baseBranch).then((diff) => {
 
 				const exclude = createMatcher(myConfig.diffExcludes || []);
 
