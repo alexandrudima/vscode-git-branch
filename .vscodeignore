@@ -1,5 +1,8 @@
-.vscode
-git.d.ts
-node.d.ts
-vscode.d.ts
-package-lock.json
+.vscode/**
+src/**
+.gitignore
+vsc-extension-quickstart.md
+**/tsconfig.json
+**/tslint.json
+**/*.map
+**/*.ts

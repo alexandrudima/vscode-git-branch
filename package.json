@@ -1,19 +1,32 @@
 {
     "name": "git-branch",
-    "description": "description",
+    "displayName": "git-branch",
+    "description": "",
     "publisher": "alexdima",
     "version": "1.4.0",
     "activationEvents": [
         "onView:git-branch.view",
         "onCommand:git-branch.refresh"
     ],
-    "main": "main.js",
+    "main": "./out/extension.js",
     "engines": {
         "vscode": "^1.29.0"
     },
     "extensionDependencies": [
         "vscode.git"
     ],
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile"
+    },
+    "devDependencies": {
+        "@types/node": "^10.12.21",
+        "@types/vscode": "^1.39.0",
+        "typescript": "^3.3.1",
+        "tslint": "^5.12.1"
+    },
     "contributes": {
         "views": {
             "scm": [
@@ -87,6 +100,6 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/alexandrudima/vscode-git-branch"
+        "url": "https://github.com/alexdima/vscode-git-branch"
     }
 }
