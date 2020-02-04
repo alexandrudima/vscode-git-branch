@@ -5,7 +5,6 @@ import * as cp from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import * as vscodeGit from 'vscode.git';
-import * as qs from 'querystring';
 
 let gitAPI: vscodeGit.API = null!;
 export function activate(ctx: vscode.ExtensionContext) {
@@ -153,9 +152,9 @@ class TreeDataProvider implements vscode.TreeDataProvider<DiffGroup | DiffGroupE
 							relativePath: relativePath,
 							kind: kind,
 							original: entryURI.with({
-								scheme: 'gitfs',
-								path: `${entryURI.path}.git`,
-								query: qs.stringify({
+								scheme: 'git',
+								path: entryURI.path,
+								query: JSON.stringify({
 									path: entryURI.fsPath,
 									ref: baseBranch
 								})
