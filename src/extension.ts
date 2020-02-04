@@ -13,7 +13,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 	vscode.window.registerTreeDataProvider('git-branch.view', treeDataProvider);
 	vscode.commands.registerCommand('git-branch.refresh', function () {
 		treeDataProvider.refresh();
-	})
+	});
 }
 
 function getDiff(repository: vscodeGit.Repository, baseBranch: string): Promise<string> {
@@ -125,7 +125,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<DiffGroup | DiffGroupE
 						name: element.name,
 						test: createMatcher(element.files),
 						entries: <DiffGroupEntry[]>[]
-					}
+					};
 				});
 				diffGroups.unshift({ name: 'Default', test: () => true, entries: [] });
 
@@ -183,13 +183,13 @@ class TreeDataProvider implements vscode.TreeDataProvider<DiffGroup | DiffGroupE
 		function createPrefixMatch(prefix: string) {
 			return function (teststr: string) {
 				return teststr.substr(0, prefix.length) === prefix;
-			}
+			};
 		}
 
 		function createExactMatch(str: string) {
 			return function (teststr: string) {
 				return teststr === str;
-			}
+			};
 		}
 
 		function createMatcher(arr: string[]) {
@@ -207,7 +207,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<DiffGroup | DiffGroupE
 					}
 				}
 				return false;
-			}
+			};
 		}
 	}
 
@@ -224,7 +224,7 @@ class TreeDataProvider implements vscode.TreeDataProvider<DiffGroup | DiffGroupE
 		const left = element.original;
 		const right = element.uri;
 
-		const r = new vscode.TreeItem(element.relativePath)
+		const r = new vscode.TreeItem(element.relativePath);
 		r.resourceUri = element.uri;
 		r.iconPath = {
 			light: this.ctx.asAbsolutePath(`resources/icons/light/status-${element.kind}.svg`),
