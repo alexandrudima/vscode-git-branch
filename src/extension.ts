@@ -19,7 +19,7 @@ export function activate(ctx: vscode.ExtensionContext) {
 function getDiff(repository: vscodeGit.Repository, baseBranch: string): Promise<string> {
 	return new Promise((c, e) => {
 		cp.exec(
-			`${gitAPI.git.path} diff ${baseBranch} HEAD --name-status`,
+			`"${gitAPI.git.path}" diff ${baseBranch} HEAD --name-status`,
 			{
 				cwd: repository.rootUri.fsPath,
 				maxBuffer: 10 * 1024 * 1024 // 10MB
@@ -49,7 +49,7 @@ function getMergeBase(repository: vscodeGit.Repository): Promise<string> {
 	// git merge-base HEAD master
 	return new Promise((c, e) => {
 		cp.exec(
-			`${gitAPI.git.path} merge-base HEAD ${masterBranch}`,
+			`"${gitAPI.git.path}" merge-base HEAD ${masterBranch}`,
 			{
 				cwd: repository.rootUri.fsPath,
 				maxBuffer: 10 * 1024 * 1024 // 10MB
